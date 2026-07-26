@@ -39,6 +39,9 @@ MAX_BALL_SPEED_X = 8
 BONUS_PROBABILITY = 0.3  # Chance that destroyed brick will drop a bonus
 BONUS_FALL_SPEED = 3
 
+# --- Game State --------------------------------------------------------------
+STARTING_LIVES = 3
+
 # --- Visual Effects -----------------------------------------------------------
 TRAIL_LENGTH = 6  # Ball's Motion Trail Length
 PARTICLE_COUNT = 10  # Particles in brick's burst

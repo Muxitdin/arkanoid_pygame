@@ -67,38 +67,61 @@ def _handle_ball_vs_bricks(ball: Ball, bricks: list[Brick], bonuses: list[Bonus]
         return
 
 
+def _start_game(level: int) -> tuple[Paddle, list[Ball], list[Brick], list[Bonus], int]:
+    """Create a fresh game state for the selected level."""
+    bricks, _, _ = load_level(level)
+    return (
+        Paddle(),
+        [Ball(cfg.WIDTH // 2, cfg.HEIGHT - 40)],
+        bricks,
+        [],
+        cfg.STARTING_LIVES,
+    )
+
+
 def run(screen: pygame.Surface, clock: pygame.time.Clock, level: int) -> None:
     """Run one playable Arkanoid level."""
-    paddle = Paddle()
-    balls = [Ball(cfg.WIDTH // 2, cfg.HEIGHT - 40)]
-    bricks, _, _ = load_level(level)
-    bonuses: list[Bonus] = []
+    paddle, balls, bricks, bonuses, lives = _start_game(level)
     font = pygame.font.Font(None, 20)
+    game_over_font = pygame.font.Font(None, 48)
     running = True
+    game_over = False
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif game_over and event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                paddle, balls, bricks, bonuses, lives = _start_game(level)
+                game_over = False
 
-        paddle.move(pygame.key.get_pressed())
-        for ball in balls[:]:
-            _handle_ball_vs_bricks(ball, bricks, bonuses)
-            if ball.rect.colliderect(paddle.rect) and ball.vy > 0:
-                _bounce_off_rect(ball, paddle.rect)
-                offset = (ball.rect.centerx - paddle.rect.centerx) / (paddle.rect.width / 2)
-                ball.vx = round(max(-cfg.MAX_BALL_SPEED_X, min(cfg.MAX_BALL_SPEED_X, offset * cfg.MAX_BALL_SPEED_X)))
-            ball.update()
-            if ball.rect.top > cfg.HEIGHT:
-                balls.remove(ball)
+        if not game_over:
+            paddle.move(pygame.key.get_pressed())
+            for ball in balls[:]:
+                _handle_ball_vs_bricks(ball, bricks, bonuses)
+                if ball.rect.colliderect(paddle.rect) and ball.vy > 0:
+                    _bounce_off_rect(ball, paddle.rect)
+                    offset = (ball.rect.centerx - paddle.rect.centerx) / (paddle.rect.width / 2)
+                    ball.vx = round(max(-cfg.MAX_BALL_SPEED_X, min(cfg.MAX_BALL_SPEED_X, offset * cfg.MAX_BALL_SPEED_X)))
+                ball.update()
+                if ball.rect.top > cfg.HEIGHT:
+                    balls.remove(ball)
 
-        for bonus in bonuses[:]:
-            bonus.update()
-            if bonus.rect.colliderect(paddle.rect):
-                ApplyBonus(bonus.type, paddle, balls)
-                bonuses.remove(bonus)
-            elif bonus.rect.top > cfg.HEIGHT:
-                bonuses.remove(bonus)
+            # With multiball, a life is lost only when the final ball is missed.
+            if not balls:
+                lives -= 1
+                if lives == 0:
+                    game_over = True
+                else:
+                    balls.append(Ball(paddle.rect.centerx, paddle.rect.top - cfg.BALL_RADIUS))
+
+            for bonus in bonuses[:]:
+                bonus.update()
+                if bonus.rect.colliderect(paddle.rect):
+                    ApplyBonus(bonus.type, paddle, balls)
+                    bonuses.remove(bonus)
+                elif bonus.rect.top > cfg.HEIGHT:
+                    bonuses.remove(bonus)
 
         screen.fill(cfg.BLACK)
         for brick in bricks:
@@ -108,5 +131,13 @@ def run(screen: pygame.Surface, clock: pygame.time.Clock, level: int) -> None:
         paddle.draw(screen)
         for ball in balls:
             ball.draw(screen)
+
+        lives_label = font.render(f"Lives: {lives}", True, cfg.WHITE)
+        screen.blit(lives_label, (10, 10))
+        if game_over:
+            message = game_over_font.render("Game Over", True, cfg.RED)
+            replay = font.render("Press Space to replay", True, cfg.WHITE)
+            screen.blit(message, message.get_rect(center=(cfg.WIDTH // 2, cfg.HEIGHT // 2 - 16)))
+            screen.blit(replay, replay.get_rect(center=(cfg.WIDTH // 2, cfg.HEIGHT // 2 + 24)))
         pygame.display.flip()
         clock.tick(cfg.FPS)
