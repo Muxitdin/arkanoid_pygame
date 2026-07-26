@@ -26,3 +26,11 @@ To check, you can use commands listed below. If you'll get a "Command not found"
 1. Run the app: `python3 main.py`
 
 After that you should see an empty window titled as "Arkanoid" - that means that you've installed everything correctly
+
+## Power-ups
+
+Destroyed bricks can drop falling power-ups. Catch them with the paddle:
+
+- `E` extends the paddle and `S` shrinks it.
+- `U` speeds up every active ball and `D` slows every active ball down.
+- `M` creates another ball. `L` enables the paddle's laser state for future laser gameplay.

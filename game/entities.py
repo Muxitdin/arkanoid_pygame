@@ -1,6 +1,22 @@
+import math
+
 import pygame
 
 import settings as cfg
+
+
+# Each entry is the internal name, the one-character icon, and its display color.
+# Keeping this catalogue beside the game entities makes it the single source of
+# truth for both bonus creation and drawing.
+POWER_UPS = {
+    "extend": ("E", cfg.CYAN),
+    "multiball": ("M", cfg.MAGENTA),
+    "laser": ("L", cfg.ORANGE),
+    "extra_life": ("+", cfg.GREEN),
+    "shrink": ("S", cfg.RED),
+    "speed_up": ("U", cfg.YELLOW),
+    "speed_down": ("D", cfg.GRAY),
+}
 
 class Paddle:
     """ Our main player, Paddle, moves only horizontally. """
@@ -32,6 +48,14 @@ class Paddle:
     def draw(self, screen: pygame.Surface) -> None:
         """ Renders the Paddle on the screen. """
         pygame.draw.rect(screen, cfg.PADDLE_COLOR, self.rect, border_radius=5)
+
+    def resize(self, width: int) -> None:
+        """Change width while keeping the paddle centred and inside the field."""
+        center_x = self.rect.centerx
+        self.rect.width = width
+        self.rect.centerx = center_x
+        self.rect.left = max(cfg.FIELD_LEFT, self.rect.left)
+        self.rect.right = min(cfg.FIELD_RIGHT, self.rect.right)
 
 
 class Brick:
@@ -90,3 +114,32 @@ class Ball:
         """ Renders the Ball. """
         colour = cfg.BALL_COLOR
         pygame.draw.circle(screen, colour, self.rect.center, self.radius)
+
+    def change_speed(self, factor: float) -> None:
+        """Scale both velocity components, retaining their direction."""
+        def scaled(value: float) -> int:
+            magnitude = max(2, min(10, round(abs(value) * factor)))
+            return int(math.copysign(magnitude, value))
+
+        self.vx = scaled(self.vx)
+        self.vy = scaled(self.vy)
+
+
+class Bonus:
+    """A falling collectible created when a brick is destroyed."""
+
+    WIDTH, HEIGHT = 26, 18
+
+    def __init__(self, bonus_type: str, center: tuple[int, int]) -> None:
+        self.type = bonus_type
+        self.icon, self.color = POWER_UPS[bonus_type]
+        self.rect = pygame.Rect(0, 0, self.WIDTH, self.HEIGHT)
+        self.rect.center = center
+
+    def update(self) -> None:
+        self.rect.y += cfg.BONUS_FALL_SPEED
+
+    def draw(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
+        pygame.draw.rect(screen, self.color, self.rect, border_radius=4)
+        label = font.render(self.icon, True, cfg.BLACK)
+        screen.blit(label, label.get_rect(center=self.rect.center))
